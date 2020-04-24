@@ -30,9 +30,11 @@ class AppLogView(APIView):
     def post(self, request, format=None):
         if request.data['excu'] == 'list':
             try:
+                # request-data-injection.command-injection.001.source
                 app_log_path = request.data['app_log_path']
                 host = request.data['host']
                 connect = connect_init(host)
+                # request-data-injection.command-injection.001.sink
                 commands = "find %s -name '*.log'" % (app_log_path)
                 result = connect.run(commands).stdout
                 res = []
@@ -47,6 +49,8 @@ class AppLogView(APIView):
             return XopsResponse(res, status=http_status)
 
         elif request.data['excu'] == 'filedown':
+            # request-data-injection.path-traversal.001.source
+            # request-data-injection.command-injection.002.source
             file_path = request.data['file_path']
             host = request.data['host']
             file_name = os.path.basename(file_path)
@@ -55,15 +59,19 @@ class AppLogView(APIView):
             if old_file_name[1] == '.log':
                 new_file_name = old_file_name[0] + '.tar.gz'
                 connect = connect_init(host)
+                # request-data-injection.command-injection.002.sink
                 commands = 'mkdir -p /tmp/remote/ && tar czf /tmp/remote/%s -C %s %s' % (new_file_name, dir_name, file_name)
                 connect.run(commands)
                 connect.get('/tmp/remote/' + new_file_name ,'/tmp/' + new_file_name)
+                # request-data-injection.path-traversal.001.sink
                 response = FileResponse(open('/tmp/' + new_file_name, 'rb'))
                 response['Content-Type'] = 'application/octet-stream'
                 response['Content-Disposition'] = 'attachment;filename="%s"' % old_file_name[0]
+                # request-data-injection.command-injection.002.sink
                 commands = 'rm -f /tmp/remote/%s' % (new_file_name)
                 connect.run(commands)
                 connect.close()
+                # request-data-injection.path-traversal.001.sink
                 os.remove('/tmp/' + new_file_name)
                 return response
             else:

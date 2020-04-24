@@ -61,8 +61,10 @@ class VersionView(APIView):
 
     def get(self, request, format=None):
         result = None
+        # request-data-injection.path-traversal.002.source
         id = request.query_params['id']
         repo = Project.objects.filter(id=int(id)).values('alias', 'repo_url', 'repo_mode')
+        # request-data-injection.path-traversal.002.sink
         path = self._path.rstrip('/') + '/' + str(id) + '_' + str(repo[0]['alias']) + '/' + repo[0]['alias']
         if repo[0]['repo_mode'] == 'tag':
             result = self.get_tag(path)
@@ -193,6 +195,7 @@ class DeployView(APIView):
 
         elif request.data['excu'] == 'deploy':
             # 部署操作
+            # request-data-injection.path-traversal.003.source
             id = request.data['id']
             webuser = request.user.username
             alias = request.data['alias']
@@ -201,6 +204,7 @@ class DeployView(APIView):
             name = '部署_' + record_id
             DeployRecord.objects.create(name=name, alias=alias, status='Failed', project_id=int(id))
             Project.objects.filter(id=id).update(last_task_status='Failed')
+            # request-data-injection.path-traversal.003.sink
             local_log_path = self._path.rstrip('/') + '/' + str(id) + '_' + str(request.data['alias']) + '/logs'
             log = local_log_path + '/' + record_id + '.log'
             version = request.data['version'].strip()
@@ -224,10 +228,16 @@ class DeployView(APIView):
         elif request.data['excu'] == 'deploymsg':
             # 部署控制台消息读取
             try:
+                # request-data-injection.path-traversal.004.source
                 id = request.data['id']
+                # request-data-injection.path-traversal.005.source
                 alias = request.data['alias']
+                # request-data-injection.path-traversal.006.source
                 record = request.data['record']
                 scenario = int(request.data['scenario'])
+                # request-data-injection.path-traversal.004.sink
+                # request-data-injection.path-traversal.005.sink
+                # request-data-injection.path-traversal.006.sink
                 logfile = self._path.rstrip('/') + '/' + str(id) + '_' + str(alias) + '/logs/' + record + '.log'
                 webuser = request.user.username
                 if scenario == 0:
@@ -242,9 +252,15 @@ class DeployView(APIView):
         elif request.data['excu'] == 'readlog' and request.data['scenario'] == 1:
             # 读取部署日志
             try:
+                # request-data-injection.path-traversal.007.source
                 id = request.data['id']
+                # request-data-injection.path-traversal.008.source
                 alias = request.data['alias']
+                # request-data-injection.path-traversal.009.source
                 record = request.data['record']
+                # request-data-injection.path-traversal.007.source
+                # request-data-injection.path-traversal.008.source
+                # request-data-injection.path-traversal.009.source
                 logfile = self._path.rstrip('/') + '/' + str(id) + '_' + str(alias) + '/logs/' + record + '.log'
                 response = FileResponse(open(logfile, 'rb'))
                 response['Content-Type'] = 'text/plain'
@@ -257,11 +273,16 @@ class DeployView(APIView):
         elif request.data['excu'] == 'app_start':
             # 项目启动
             try:
+                # request-data-injection.advanced-command-injection.001.source
                 app_start = request.data['app_start']
                 host = request.data['host']
                 webuser = request.user.username
                 connect = connect_init(host)
                 app_start = app_start.strip()
+                # Notes: This is a sink because it will eventually try to execute
+                # 'app_start' as a command on a remote server. We can't detect this yet,
+                # but I'm annotating here for future use.
+                # request-data-injection.advanced-command-injection.001.sink
                 connect.run(app_start, webuser=webuser)
                 connect.close()
                 http_status = OK
@@ -274,11 +295,13 @@ class DeployView(APIView):
         elif request.data['excu'] == 'app_stop':
             # 项目停止
             try:
+                # request-data-injection.advanced-command-injection.002.source
                 app_stop = request.data['app_stop']
                 host = request.data['host']
                 webuser = request.user.username
                 connect = connect_init(host)
                 app_stop = app_stop.strip()
+                # request-data-injection.advanced-command-injection.002.sink
                 connect.run(app_stop, webuser=webuser)
                 connect.close()
                 http_status = OK
